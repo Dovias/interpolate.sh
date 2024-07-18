@@ -134,7 +134,7 @@ if [ -n "$file_path_regex" ]; then
 fi
 
 for input_file_path in $input_file_paths; do
-	output_file_path="$(echo "$input_file_path" | sed -e "s/$(escape_forward_slash $input_path)/$(escape_forward_slash $output_path)/")"
+	output_file_path="$(echo "$input_file_path" | sed "s/$(escape_forward_slash $input_path)/$(escape_forward_slash $output_path)/")"
 	verbose_execute echo "Attempting to interpolate given variables in input file path: $input_file_path"
 
 	verbose_execute echo "Copying input file path ($input_file_path) contents into temporary file path: $temp_file_path"
@@ -144,14 +144,14 @@ for input_file_path in $input_file_paths; do
 	for interpolation_variable in $interpolation_variables; do
 		key=$(escape_forward_slash "${interpolation_variable%%=*}")
 		value=$(escape_forward_slash "$(echo "$interpolation_variable" | cut -sd= -f2)")
-		
-		latter_interpolation="$(verbose_execute sed -n "s/.*\(\${$key}\).*/\1/p" "$temp_file_path")"
+		sed -n "" "$temp_file_path"
+		latter_interpolation="$(verbose_execute sed -n "s/.*\(\${$key\(:=.\+\)\?}\).*/\1/p" "$temp_file_path")"
 		if [ -n "$latter_interpolation" ]; then
 			echo "Interpolating $latter_interpolation variable in input file path: $input_file_path"
 			input_file_interpolated=true
 		fi
 		
-		sed -i "s/\${$key}/$value/g" "$temp_file_path"
+		sed -i "s/\${$key\(:=.\+\)\?}/$value/g" "$temp_file_path"
 	done
 
 	if $output_interpolated_only && ! $input_file_interpolated; then continue; fi
