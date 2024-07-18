@@ -153,6 +153,13 @@ for input_file_path in $input_file_paths; do
 		sed -i "s/\${$key\(:=.*\)\?}/$value/g" "$temp_file_path"
 	done
 
+	latter_interpolation="$(verbose_execute sed -n "s/.*\(\${.\+:=.*}\).*/\1/p" "$temp_file_path")"
+	if [ -n "$latter_interpolation" ]; then
+		echo "Interpolating $latter_interpolation variable in input file path: $input_file_path"
+		input_file_interpolated=true
+	fi
+	sed -i "s/\${.\+:=\(.*\)}/\1/g" "$temp_file_path"
+
 	if $output_interpolated_only && ! $input_file_interpolated; then continue; fi
 
 	verbose_execute echo "Copying processed input file contents into output file path: $output_file_path"
