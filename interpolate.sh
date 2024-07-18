@@ -134,7 +134,7 @@ if [ -n "$file_path_regex" ]; then
 fi
 
 for input_file_path in $input_file_paths; do
-	output_file_path="$(echo "$input_file_path" | sed -e "s/$input_path/$output_path/")"
+	output_file_path="$(echo "$input_file_path" | sed -e "s/$(escape_forward_slash $input_path)/$(escape_forward_slash $output_path)/")"
 	verbose_execute echo "Attempting to interpolate given variables in input file path: $input_file_path"
 
 	verbose_execute echo "Copying input file path ($input_file_path) contents into temporary file path: $temp_file_path"
