@@ -1,5 +1,8 @@
 #!/bin/sh
 
+newline='
+'
+
 for cmd in sed grep cut find mktemp; do
     if ! command -v "$cmd" >/dev/null 2>&1; then
         echo "This script requires command '$cmd' to function properly" >&2
@@ -27,27 +30,30 @@ display_usage () {
 $0: interpolates variables for input_path and outputs them into output_path
 Usage: $0 [options] [operands] input_path output_path [variable_name[=data]...]
 Options:
-	-f, --force-override-output		Forcefully overrides any files that are in output_path
-	-h, --help				Displays this usage message
-	-o, --output-interpolated-only		Outputs only interpolated files to output_path
+	-f, --forced-output			Forcefully overrides any files that are in output_path
+	-h, --help				Outputs this usage message
+	-o, --interpolated-output-only		Outputs only interpolated files to output_path
 	-v, --verbose-logging			Enables verbose logging
 Operand options:
-	-d, --traverse-depth[=]depth		Specifies depth, which input_path directory would be traversed for interpolation recursively
 	-e, --environment-variable[=]regex	Enables interpolation of filtered environment variables in input_path by given regular expression
 	-i, --input-path[=]regex		Filters input_path directory by given regular expression
+	-p, --pass-amount[=]number		Specifies amount of how many attempts will be tried to interpolate the variables sequentially
+	-t, --traverse-depth[=]number		Specifies depth of how deep input_path directory would be traversed recursively
 EOL
 
 	exit 1
 }
 
-force_override_output=false
-output_interpolated_only=false
+
+
+forced_output=false
+interpolated_output_only=false
 verbose_logging=false
 while true; do
 	case "$1" in
-	'-d'|'--traverse-depth')
+	'-t'|'--traverse-depth')
 		traverse_depth="$2"
-		if [ -z "$traverse_depth" ] || ! is_number "$traverse_depth"; then display_usage "$1 operand should be specified as a natural number"; fi
+		if [ -z "$traverse_depth" ] || ! is_number "$traverse_depth"; then display_usage "$1 operand should be specified as a number"; fi
 		if [ $traverse_depth -lt 1 ]; then display_usage "$1 operand cannot be less than 1"; fi
 
 		shift
@@ -55,8 +61,22 @@ while true; do
 	'--traverse-depth='*)
 		option=$(echo "$1" | cut -d= -f1)
 		traverse_depth="$(echo "$1" | cut -d= -f2)"
-		if ! is_number "$traverse_depth"; then display_usage "$option operand should be specified as a natural number"; fi
+		if ! is_number "$traverse_depth"; then display_usage "$option operand should be specified as a number"; fi
 		if [ $traverse_depth -lt 1 ]; then display_usage "$option operand cannot be less than 1"; fi
+
+		;;
+	'-p'|'--pass-amount')
+		pass_amount="$2"
+		if [ -z "$pass_amount" ] || ! is_number "$pass_amount"; then display_usage "$1 operand should be specified as a number"; fi
+		if [ $pass_amount -lt 1 ]; then display_usage "$1 operand cannot be less than 1"; fi
+
+		shift
+		;;
+	'--pass-amount='*)
+		option=$(echo "$1" | cut -d= -f1)
+		pass_amount="$(echo "$1" | cut -d= -f2)"
+		if ! is_number "$pass_amount"; then display_usage "$option operand should be specified as a number"; fi
+		if [ $pass_amount -lt 1 ]; then display_usage "$option operand cannot be less than 1"; fi
 
 		;;
 	'-e'|'--environment-variable')
@@ -68,8 +88,8 @@ while true; do
 	'--environment-variable='*)
 		environment_variable_regex="$(echo "$1" | cut -d= -f2)"
 		;;
-	'-f'|'--force-override-output')
-		force_override_output=true
+	'-f'|'--forced-output')
+		forced_output=true
 		;;
 	'-h'|'--help') display_usage;;
 	'-i'|'--input-path')
@@ -81,8 +101,8 @@ while true; do
 	'--input-path='*)
 		file_path_regex="$(echo "$1" | cut -d= -f2)"
 		;;
-	'-o'|'--output-interpolated-only')
-		output_interpolated_only=true
+	'-o'|'--interpolated-output-only')
+		interpolated_output_only=true
 		;;
 	'-v'|'--verbose-logging')
 		verbose_logging=true
@@ -112,13 +132,14 @@ verbose_execute () {
 temp_file_path="$(mktemp)"
 verbose_execute echo "Created temporary file in file path: $temp_file_path"
 
-
+OLD_IFS="$IFS"
+IFS=$newline
 if [ -n "$environment_variable_regex" ]; then
 	interpolation_variables="$(printenv | cut -d= -f1 | grep -E "$environment_variable_regex" | while read variable; do
 		echo "$variable=$(printenv "$variable")";
-	done) $@"
+	done)$newline$*"
 else
-	interpolation_variables=$@
+	interpolation_variables=$*
 fi
 
 input_file_paths="$(
@@ -133,43 +154,51 @@ if [ -n "$file_path_regex" ]; then
 	input_file_paths="$(echo "$input_file_paths" | grep -E "$file_path_regex")"
 fi
 
+
 for input_file_path in $input_file_paths; do
 	output_file_path="$(echo "$input_file_path" | sed "s/$(escape_forward_slash $input_path)/$(escape_forward_slash $output_path)/")"
 	verbose_execute echo "Attempting to interpolate given variables in input file path: $input_file_path"
 
 	verbose_execute echo "Copying input file path ($input_file_path) contents into temporary file path: $temp_file_path"
-	cp "$input_file_path" "$temp_file_path"
+	cp -p "$input_file_path" "$temp_file_path"
+
+	input_file_interpolation_variables="$interpolation_variables$newline$(sed -n "s/.*\${\(.*\)\:[-=]\(.*\)\?}.*/\1=\2/gp" "$temp_file_path")"
 
 	input_file_interpolated=false
-	for interpolation_variable in $interpolation_variables; do
-		key=$(escape_forward_slash "${interpolation_variable%%=*}")
-		value=$(escape_forward_slash "$(echo "$interpolation_variable" | cut -sd= -f2)")
-		latter_interpolation="$(verbose_execute sed -n "s/.*\(\${$key\(:=.*\)\?}\).*/\1/p" "$temp_file_path")"
-		if [ -n "$latter_interpolation" ]; then
-			echo "Interpolating $latter_interpolation variable in input file path: $input_file_path"
-			input_file_interpolated=true
-		fi
-		
-		sed -i "s/\${$key\(:=.*\)\?}/$value/g" "$temp_file_path"
+	recursive_flag=true
+	remaining_pass_amount=$pass_amount
+	while ( [ -z $remaining_pass_amount ] || [ $remaining_pass_amount -gt 0 ] ) && $recursive_flag; do
+		recursive_flag=false
+
+	 	for interpolation_variable in $input_file_interpolation_variables; do
+			key=$(escape_forward_slash "${interpolation_variable%%=*}")
+			value=$(escape_forward_slash "$(echo "$interpolation_variable" | sed -n 's/[^=]\+=\?//p')")
+
+			latter_interpolation="$(verbose_execute sed -n "s/.*\(\${$key\(:[-=].*\)\?}\).*/\1/p" "$temp_file_path")"
+			if [ -n "$latter_interpolation" ]; then
+				echo "Interpolating $latter_interpolation variable in input file path: $input_file_path"
+				input_file_interpolated=true
+				recursive_flag=true
+			fi
+			
+			sed -i "s/\${$key\(:[-=].*\)\?}/$value/g" "$temp_file_path"
+		done
+
+		remaining_pass_amount=$((remaining_pass_amount - 1))
 	done
 
-	latter_interpolation="$(verbose_execute sed -n "s/.*\(\${.\+:=.*}\).*/\1/p" "$temp_file_path")"
-	if [ -n "$latter_interpolation" ]; then
-		echo "Interpolating $latter_interpolation variable in input file path: $input_file_path"
-		input_file_interpolated=true
-	fi
-	sed -i "s/\${.\+:=\(.*\)}/\1/g" "$temp_file_path"
-
-	if $output_interpolated_only && ! $input_file_interpolated; then continue; fi
+	if $interpolated_output_only && ! $input_file_interpolated; then continue; fi
 
 	verbose_execute echo "Copying processed input file contents into output file path: $output_file_path"
 	mkdir -p "$(dirname "$output_file_path")"
-	if $force_override_output; then
-		cp "$temp_file_path" "$output_file_path"
+	if $forced_output; then
+		cp -p "$temp_file_path" "$output_file_path"
 	else
-		cp -i "$temp_file_path" "$output_file_path" < /dev/tty
+		cp -pi "$temp_file_path" "$output_file_path" < /dev/tty
 	fi
 done
+IFS="$OLD_IFS"
+
 
 cleanup () {
 	verbose_execute echo "Removing temporary file in file path: $temp_file_path"
