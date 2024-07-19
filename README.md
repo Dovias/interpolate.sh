@@ -13,8 +13,15 @@ Operand options:
         -i, --input-path[=]regex                Filters input_path directory by given regular expression
 ```
 
-# POSIX
-This shell script is made to be as much POSIX-compliant as possible. This means that the code inside could look really clunky and hard to understand in some way or another. This shell script was designed in mind with busybox's `ash` shell and tested using Alpine Linux WSL instance. Also briefly tested with `bash` using Ubuntu distribution
+# Requirements
+This shell script is made to be as much POSIX-compliant as possible. This means that the code inside could look really clunky and hard to understand in some way or another. This shell script was designed in mind with busybox's `ash` shell and tested using Alpine Linux WSL instance. Also briefly tested with `bash` using Ubuntu distribution.
 
-## What's the use of this?
+In order for this shell script to work it requires these commands to be available in your environment:
+- sed
+- grep
+- cut
+- find
+- mktemp
+
+## What is the point of this?
 This shell script allows you to create template-like folder structures with placeholders which you can populate with proper values that are provided via the shell. That means you can preprocess files for deployment of your application.
