@@ -3,14 +3,15 @@ Shell script for Unix-like systems which interpolates shell and environment vari
 ```
 Usage: interpolate.sh [options] [operands] input_path output_path [variable_name[=data]...]
 Options:
-        -f, --force-override-output             Forcefully overrides any files that are in output_path
-        -h, --help                              Displays this usage message
-        -o, --output-interpolated-only          Outputs only interpolated files to output_path
+        -f, --forced-output                     Forcefully overrides any files that are in output_path
+        -h, --help                              Outputs this usage message
+        -o, --interpolated-output-only          Outputs only interpolated files to output_path
         -v, --verbose-logging                   Enables verbose logging
 Operand options:
-        -d, --traverse-depth[=]depth            Specifies depth, which input_path directory would be traversed for interpolation recursively
         -e, --environment-variable[=]regex      Enables interpolation of filtered environment variables in input_path by given regular expression
         -i, --input-path[=]regex                Filters input_path directory by given regular expression
+        -p, --pass-amount[=]number              Specifies amount of how many attempts will be tried to interpolate the variables sequentially
+        -t, --traverse-depth[=]number           Specifies depth of how deep input_path directory would be traversed recursively
 ```
 
 ## What is the point of this?
