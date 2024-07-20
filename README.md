@@ -14,11 +14,15 @@ Operand options:
         -t, --traverse-depth[=]number           Specifies depth of how deep input_path directory would be traversed recursively
 ```
 
-## What is the point of this?
-This shell script allows you to create template-like folder structures with placeholders which you can populate with proper values that are provided via the shell. That means you can preprocess files for deployment of your application.
+# Supported variable interpolation types
+|Expression|Description|
+|-|-|
+|`${Parameter}`|The value, if any, of the specified *Parameter* parameter is substituted|
+|`${Parameter:-Word}`|If the *Parameter* parameter is set and is not null, then its value is substituted; otherwise, the value of the *Word* parameter is substituted.|
+|`${Parameter:=Word}`|If the *Parameter* parameter is not set or is null, then it is set and its value is substituted to the value of the *Word* parameter.|
 
 # Requirements
-This shell script is made to be as much POSIX-compliant as possible. This means that the code inside could look really clunky and hard to understand in some way or another. This shell script was designed in mind with busybox's `ash` shell and tested using Alpine Linux WSL instance. Also briefly tested with `bash` using Ubuntu distribution.
+This shell script is made to be as much modern POSIX-compliant as possible. This means that the code inside could look really clunky and hard to understand in some way or another. This shell script was designed in mind for BusyBox v1.36.1 `ash` shell and tested using Alpine Linux WSL instance. This was also briefly tested with `bash` using Ubuntu distribution.
 
 In order for this shell script to work it requires these commands to be available in your environment:
 - sed
@@ -26,19 +30,3 @@ In order for this shell script to work it requires these commands to be availabl
 - cut
 - find
 - mktemp
-
-# Variable interpolation examples
-|Expression|Command|Result|
-|-|-|-|
-|${VARIABLE_NAME}|`interpolate.sh input_path output_path`|**${VARIABLE_NAME}**|
-|${VARIABLE_NAME}|`interpolate.sh input_path output_path VARIABLE_NAME`||
-|${VARIABLE_NAME}|`interpolate.sh input_path output_path VARIABLE_NAME=`||
-|${VARIABLE_NAME}|`interpolate.sh input_path output_path VARIABLE_NAME=VARIABLE_DATA`|**VARIABLE_DATA**|
-|${VARIABLE_NAME}|`interpolate.sh -e VARIABLE_NAME input_path output_path`||
-|${VARIABLE_NAME}|`VARIABLE_NAME=VARIABLE_DATA interpolate.sh -e VARIABLE_NAME input_path output_path`|**VARIABLE_DATA**|
-|${VARIABLE_NAME:=VARIABLE_DEFAULT_DATA}|`interpolate.sh input_path output_path`|**VARIABLE_DEFAULT_DATA**|
-|${VARIABLE_NAME:=VARIABLE_DEFAULT_DATA}|`interpolate.sh input_path output_path VARIABLE_NAME`||
-|${VARIABLE_NAME:=VARIABLE_DEFAULT_DATA}|`interpolate.sh input_path output_path VARIABLE_NAME=`||
-|${VARIABLE_NAME:=VARIABLE_DEFAULT_DATA}|`interpolate.sh input_path output_path VARIABLE_NAME=VARIABLE_DATA`|**VARIABLE_DATA**|
-|${VARIABLE_NAME:=VARIABLE_DEFAULT_DATA}|`interpolate.sh -e VARIABLE_NAME input_path output_path`|**VARIABLE_DEFAULT_DATA**|
-|${VARIABLE_NAME:=VARIABLE_DEFAULT_DATA}|`VARIABLE_NAME=VARIABLE_DATA interpolate.sh -e VARIABLE_NAME input_path output_path`|**VARIABLE_DATA**|
