@@ -165,10 +165,10 @@ for input_file_path in $input_file_paths; do
 	input_file_interpolation_variables="$interpolation_variables$newline$(sed -n "s/.*\${\(.*\)\:[-=]\(.*\)\?}.*/\1=\2/gp" "$temp_file_path")"
 
 	input_file_interpolated=false
-	recursive_flag=true
+	pass_flag=true
 	remaining_pass_amount=$pass_amount
-	while ( [ -z $remaining_pass_amount ] || [ $remaining_pass_amount -gt 0 ] ) && $recursive_flag; do
-		recursive_flag=false
+	while ( [ -z $remaining_pass_amount ] || [ $remaining_pass_amount -gt 0 ] ) && $pass_flag; do
+		pass_flag=false
 
 	 	for interpolation_variable in $input_file_interpolation_variables; do
 			key=$(escape_forward_slash "${interpolation_variable%%=*}")
@@ -178,7 +178,7 @@ for input_file_path in $input_file_paths; do
 			if [ -n "$latter_interpolation" ]; then
 				echo "Interpolating $latter_interpolation variable in input file path: $input_file_path"
 				input_file_interpolated=true
-				recursive_flag=true
+				pass_flag=true
 			fi
 			
 			sed -i "s/\${$key\(:[-=].*\)\?}/$value/g" "$temp_file_path"
